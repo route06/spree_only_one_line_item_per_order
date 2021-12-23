@@ -1,0 +1,44 @@
+name: ci
+
+on: push
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      DATABASE_HOST: 0.0.0.0
+      DATABASE_PASSWORD: mysql123
+      RAILS_ENV: test
+      REDIS_URL: redis://0.0.0.0:6379
+      TZ: Asia/Tokyo
+
+    services:
+      mysql:
+        image: mysql:8.0.23
+        options: --health-cmd "mysqladmin ping -h localhost" --health-interval 20s --health-timeout 10s --health-retries 10
+        env:
+          MYSQL_ROOT_PASSWORD: ${{ env.DATABASE_PASSWORD }}
+        ports:
+          - 3306:3306
+      redis:
+        image: redis:6.2-alpine
+        options: --health-cmd "redis-cli -h localhost ping" --health-interval 10s --health-timeout 5s --health-retries 15
+        ports:
+          - 6379:6379
+
+    steps:
+      - uses: actions/checkout@v2
+      - uses: ruby/setup-ruby@v1
+        with:
+          bundler-cache: true
+          ruby-version: 3.0.3
+
+      - name: Exec tests 👚
+        env:
+          DB_HOST: 127.0.0.1
+          DB_PASSWORD: ${{ env.DATABASE_PASSWORD }}
+          DB_USERNAME: root
+        run: |
+          bundle exec rake test_app
+          bundle exec rake spec
